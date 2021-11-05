@@ -21,6 +21,9 @@ import com.duckduckgo.app.browser.BuildConfig
 import com.duckduckgo.app.global.rating.AppEnjoymentPromptOptions.ShowEnjoymentPrompt
 import com.duckduckgo.app.global.rating.AppEnjoymentPromptOptions.ShowNothing
 import com.duckduckgo.app.playstore.PlayStoreUtils
+import com.duckduckgo.app.statistics.VariantManager
+import com.duckduckgo.app.statistics.returningUsersNoOnboardingEnabled
+import com.duckduckgo.app.statistics.returningUsersWidgetPromotionEnabled
 import com.duckduckgo.app.usage.search.SearchCountDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,11 +38,17 @@ class InitialPromptTypeDecider(
     private val searchCountDao: SearchCountDao,
     private val initialPromptDecider: ShowPromptDecider,
     private val secondaryPromptDecider: ShowPromptDecider,
-    private val context: Context
+    private val context: Context,
+    private val variantManager: VariantManager
 ) : PromptTypeDecider {
 
     override suspend fun determineInitialPromptType(): AppEnjoymentPromptOptions {
         return withContext(Dispatchers.IO) {
+
+            if (variantManager.returningUsersNoOnboardingEnabled() || variantManager.returningUsersWidgetPromotionEnabled()) {
+                Timber.i("Returning users should not see any app enjoyment prompts as per experiment definition")
+                return@withContext ShowNothing
+            }
 
             if (!isPlayStoreInstalled()) return@withContext ShowNothing
             if (!wasInstalledThroughPlayStore()) return@withContext ShowNothing

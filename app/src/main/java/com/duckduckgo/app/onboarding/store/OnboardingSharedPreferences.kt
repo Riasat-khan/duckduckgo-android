@@ -27,11 +27,16 @@ class OnboardingSharedPreferences @Inject constructor(private val context: Conte
         get() = preferences.getString(ONBOARDING_JOURNEY, null)
         set(dialogJourney) = preferences.edit { putString(ONBOARDING_JOURNEY, dialogJourney) }
 
+    override var hideTipsForReturningUser: Boolean
+        get() = preferences.getBoolean(KEY_HIDE_TIPS_FOR_RETURNING_USER, false)
+        set(enabled) = preferences.edit { putBoolean(KEY_HIDE_TIPS_FOR_RETURNING_USER, enabled) }
+
     private val preferences: SharedPreferences
         get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
 
     companion object {
         const val FILENAME = "com.duckduckgo.app.onboarding.settings"
         const val ONBOARDING_JOURNEY = "onboardingJourney"
+        const val KEY_HIDE_TIPS_FOR_RETURNING_USER = "HIDE_TIPS_FOR_RETURNING_USER"
     }
 }

@@ -18,6 +18,7 @@ package com.duckduckgo.app.global.rating
 
 import androidx.test.platform.app.InstrumentationRegistry
 import com.duckduckgo.app.playstore.PlayStoreUtils
+import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.app.usage.search.SearchCountDao
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
@@ -36,21 +37,24 @@ class InitialPromptTypeDeciderTest {
     private val mockSearchCountDao: SearchCountDao = mock()
     private val mockInitialPromptDecider: ShowPromptDecider = mock()
     private val mockSecondaryPromptDecider: ShowPromptDecider = mock()
+    private val mockVariantManager: VariantManager = mock()
 
     @Before
     fun setup() = runBlocking<Unit> {
 
         testee = InitialPromptTypeDecider(
-            mockPlayStoreUtils,
-            mockSearchCountDao,
-            mockInitialPromptDecider,
-            mockSecondaryPromptDecider,
-            InstrumentationRegistry.getInstrumentation().targetContext
+            playStoreUtils = mockPlayStoreUtils,
+            searchCountDao = mockSearchCountDao,
+            initialPromptDecider = mockInitialPromptDecider,
+            secondaryPromptDecider = mockSecondaryPromptDecider,
+            context = InstrumentationRegistry.getInstrumentation().targetContext,
+            variantManager = mockVariantManager
         )
 
         whenever(mockPlayStoreUtils.isPlayStoreInstalled()).thenReturn(true)
         whenever(mockPlayStoreUtils.installedFromPlayStore()).thenReturn(true)
         whenever(mockSearchCountDao.getSearchesMade()).thenReturn(Long.MAX_VALUE)
+        whenever(mockVariantManager.getVariant()).thenReturn(VariantManager.DEFAULT_VARIANT)
     }
 
     @Test
@@ -80,6 +84,18 @@ class InitialPromptTypeDeciderTest {
         whenever(mockSearchCountDao.getSearchesMade()).thenReturn(Long.MAX_VALUE)
         val type = testee.determineInitialPromptType() as AppEnjoymentPromptOptions.ShowEnjoymentPrompt
         assertSecondPrompt(type.promptCount)
+    }
+
+    @Test
+    fun whenReturningUsersNoOnboardingEnabledThenNoPromptShown() = runBlocking {
+        whenever(mockVariantManager.getVariant()).thenReturn(VariantManager.ACTIVE_VARIANTS.first { it.key == "za" })
+        assertPromptNotShown(testee.determineInitialPromptType())
+    }
+
+    @Test
+    fun whenReturningUsersWidgetPromotionEnabledThenNoPromptShown() = runBlocking {
+        whenever(mockVariantManager.getVariant()).thenReturn(VariantManager.ACTIVE_VARIANTS.first { it.key == "zw" })
+        assertPromptNotShown(testee.determineInitialPromptType())
     }
 
     private fun assertPromptNotShown(prompt: AppEnjoymentPromptOptions) {

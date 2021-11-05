@@ -38,6 +38,7 @@ import com.duckduckgo.app.settings.db.SettingsDataStore
 import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.app.statistics.isFireproofExperimentEnabled
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.app.statistics.returningUsersNoOnboardingEnabled
 import com.duckduckgo.app.survey.db.SurveyDao
 import com.duckduckgo.app.survey.model.Survey
 import com.duckduckgo.app.tabs.model.TabRepository
@@ -214,7 +215,7 @@ class CtaViewModel @Inject constructor(
         if (!daxOnboardingActive()) return null
 
         return withContext(dispatchers.io()) {
-            if (settingsDataStore.hideTips || daxDialogFireEducationShown()) return@withContext null
+            if (hideTips() || daxDialogFireEducationShown()) return@withContext null
             return@withContext DaxFireDialogCta.TryClearDataCta(onboardingStore, appInstallStore)
         }
     }
@@ -231,11 +232,13 @@ class CtaViewModel @Inject constructor(
                 DaxBubbleCta.DaxEndCta(onboardingStore, appInstallStore)
             }
             canShowWidgetCta() -> {
-                if (widgetCapabilities.supportsAutomaticWidgetAdd) AddWidgetAuto else AddWidgetInstructions
+                if (variantManager.returningUsersNoOnboardingEnabled()) null else getWidget()
             }
             else -> null
         }
     }
+
+    private fun getWidget() = if (widgetCapabilities.supportsAutomaticWidgetAdd) AddWidgetAuto else AddWidgetInstructions
 
     private suspend fun getBrowserCta(site: Site?): Cta? {
         return when {
@@ -273,7 +276,7 @@ class CtaViewModel @Inject constructor(
     }
 
     @WorkerThread
-    private suspend fun canShowDaxIntroCta(): Boolean = daxOnboardingActive() && !daxDialogIntroShown() && !settingsDataStore.hideTips
+    private suspend fun canShowDaxIntroCta(): Boolean = daxOnboardingActive() && !daxDialogIntroShown() && !hideTips()
 
     @WorkerThread
     private suspend fun canShowDaxFireproofCta(): Boolean = variantManager.isFireproofExperimentEnabled() &&
@@ -288,11 +291,11 @@ class CtaViewModel @Inject constructor(
     private suspend fun canShowDaxCtaEndOfJourney(): Boolean = daxOnboardingActive() &&
         !daxDialogEndShown() &&
         daxDialogIntroShown() &&
-        !settingsDataStore.hideTips &&
+        !hideTips() &&
         (daxDialogNetworkShown() || daxDialogOtherShown() || daxDialogSerpShown() || daxDialogTrackersFoundShown())
 
     private suspend fun canShowDaxDialogCta(): Boolean {
-        if (!daxOnboardingActive() || settingsDataStore.hideTips) {
+        if (!daxOnboardingActive() || hideTips()) {
             return false
         }
         return true
@@ -354,7 +357,7 @@ class CtaViewModel @Inject constructor(
 
     private suspend fun daxOnboardingActive(): Boolean = userStageStore.daxOnboardingActive()
 
-    private suspend fun pulseAnimationDisabled(): Boolean = !daxOnboardingActive() || pulseFireButtonShown() || daxDialogFireEducationShown() || settingsDataStore.hideTips
+    private suspend fun pulseAnimationDisabled(): Boolean = !daxOnboardingActive() || pulseFireButtonShown() || daxDialogFireEducationShown() || hideTips()
 
     private suspend fun allOnboardingCtasShown(): Boolean {
         return withContext(dispatchers.io()) {
@@ -398,6 +401,8 @@ class CtaViewModel @Inject constructor(
             }
         }
     }
+
+    private fun hideTips() = settingsDataStore.hideTips || onboardingStore.hideTipsForReturningUser
 
     companion object {
         private const val SURVEY_DEFAULT_MIN_DAYS_INSTALLED = 30

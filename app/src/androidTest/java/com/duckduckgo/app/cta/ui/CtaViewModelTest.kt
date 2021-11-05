@@ -695,6 +695,17 @@ class CtaViewModelTest {
         assertNull(fireDialogCta)
     }
 
+    @Test
+    fun whenRefreshCtaOnHomeTabAndReturningUsersNoOnboardingEnabledTrueAndWidgetCompatibleThenReturnNull() = coroutineRule.runBlocking {
+        whenever(mockSettingsDataStore.hideTips).thenReturn(false)
+        whenever(mockWidgetCapabilities.supportsStandardWidgetAdd).thenReturn(true)
+        whenever(mockWidgetCapabilities.supportsAutomaticWidgetAdd).thenReturn(true)
+        whenever(mockVariantManager.getVariant()).thenReturn(ACTIVE_VARIANTS.first { it.key == "za" })
+
+        val value = testee.refreshCta(coroutineRule.testDispatcher, isBrowserShowing = false)
+        assertNull(value)
+    }
+
     private suspend fun givenDaxOnboardingActive() {
         whenever(mockUserStageStore.getUserAppStage()).thenReturn(AppStage.DAX_ONBOARDING)
     }
